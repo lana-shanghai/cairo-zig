@@ -11,11 +11,14 @@ const HintReference = @import("hint_processor_def.zig").HintReference;
 const MaybeRelocatable = @import("../vm/memory/relocatable.zig").MaybeRelocatable;
 const Felt252 = @import("../math/fields/starknet.zig").Felt252;
 const HintError = @import("../vm/error.zig").HintError;
+const HintProcessor = @import("hint_processor_def.zig").CairoVMHintProcessor;
+const HintData = @import("hint_processor_def.zig").HintData;
 const vm_error = @import("../vm/error.zig");
 
 //Implements hint: memory[ap] = segments.add()
 pub fn addSegment(allocator: Allocator, vm: *CairoVM) !void {
     const new_segment_base = try vm.addMemorySegment();
+    std.debug.print("I AM ADDING A SEGMENT {}\n", .{new_segment_base});
     try hint_utils.insertValueIntoAp(allocator, vm, MaybeRelocatable.fromRelocatable(new_segment_base));
 }
 
@@ -94,4 +97,26 @@ test "MemCpyHintUtils: getIntegerFromVarNameValid invalid expected integer" {
     defer ids_data.deinit();
 
     try std.testing.expectError(HintError.IdentifierNotInteger, hint_utils.getIntegerFromVarName(var_name, &vm, ids_data, .{}));
+}
+
+test "MemCpyHintUtils: addSegment" {
+    const hint_code = "memory[ap] = segments.add()";
+    var vm = try CairoVM.init(std.testing.allocator, .{});
+    defer vm.deinit();
+    defer vm.segments.memory.deinitData(std.testing.allocator);
+
+    _ = try vm.addMemorySegment();
+
+    var hint_processor = HintProcessor{};
+
+    var ids_data = std.StringHashMap(HintReference).init(std.testing.allocator);
+    defer ids_data.deinit();
+
+    var hint_data = HintData.init(hint_code, ids_data, .{});
+
+    try hint_processor.executeHint(std.testing.allocator, &vm, &hint_data, undefined, undefined);
+    // assert_matches::assert_matches!(run_hint!(vm, HashMap::new(), hint_code), Ok(()));
+    //A segment is added
+    try std.testing.expectEqual(2, vm.segments.memory.data.items.len);
+    // assert_eq!(vm.segments.memory.data.len(), 2);
 }

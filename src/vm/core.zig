@@ -487,6 +487,9 @@ pub const CairoVM = struct {
                     .fp = self.run_context.fp.*,
                 },
             );
+            std.debug.print("REGISTER PC: {}\n", .{ self.run_context.pc });
+            std.debug.print("REGISTER AP: {}\n", .{ self.run_context.ap });
+            std.debug.print("REGISTER FP: {}\n", .{ self.run_context.fp });
         }
 
         // Compute operands for the instruction.
@@ -549,18 +552,25 @@ pub const CairoVM = struct {
 
         // Compute the destination address of the instruction.
         op_res.dst_addr = try self.run_context.computeDstAddr(instruction);
+        std.debug.print("\n", .{});
+        std.debug.print("DST ADDR: {}\n", .{ op_res.dst_addr });
         const dst_op = self.segments.memory.get(op_res.dst_addr);
+        std.debug.print("DST OP: {any}\n", .{ dst_op });
 
         // Compute the first operand address.
         op_res.op_0_addr = try self.run_context.computeOp0Addr(instruction);
+        std.debug.print("OP 0 ADDR: {}\n", .{ op_res.op_0_addr });
         const op_0_op = self.segments.memory.get(op_res.op_0_addr);
+        std.debug.print("OP 0 OP: {any}\n", .{ op_0_op });
 
         // Compute the second operand address based on the first operand.
         op_res.op_1_addr = try self.run_context.computeOp1Addr(
             instruction,
             op_0_op,
         );
+        std.debug.print("OP 1 ADDR: {}\n", .{ op_res.op_1_addr });
         const op_1_op = self.segments.memory.get(op_res.op_1_addr);
+        std.debug.print("OP 1 OP: {any}\n", .{ op_1_op });
 
         // Deduce the first operand if retrieval from memory fails.
         if (op_0_op) |op_0| {
@@ -577,6 +587,7 @@ pub const CairoVM = struct {
                 &op_1_op,
             );
         }
+        std.debug.print("OP 0: {}\n", .{ op_res.op_0 });
 
         // Deduce the second operand if retrieval from memory fails.
         if (op_1_op) |op_1| {
@@ -594,11 +605,13 @@ pub const CairoVM = struct {
                 &@as(?MaybeRelocatable, op_res.op_0),
             );
         }
+        std.debug.print("OP 1: {}\n", .{ op_res.op_1 });
 
         // Compute the result if it hasn't been computed.
         if (op_res.res == null) {
             op_res.res = try instruction.computeRes(op_res.op_0, op_res.op_1);
         }
+        std.debug.print("RES: {any}\n", .{ op_res.res });
 
         // Retrieve the destination if not already available.
         if (dst_op) |dst| {
@@ -609,6 +622,8 @@ pub const CairoVM = struct {
             // Compute the destination based on certain conditions.
             op_res.dst = try self.deduceDst(instruction, op_res.res);
         }
+        std.debug.print("DST: {}\n", .{ op_res.dst });
+        std.debug.print("\n", .{});
 
         // Return the computed operands and result.
         return op_res;
